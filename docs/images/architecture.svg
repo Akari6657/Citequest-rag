@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="624" viewBox="0 0 960 624" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="650" viewBox="0 0 960 650" role="img" aria-labelledby="title desc">
   <title id="title">CiteQuest 检索与引用问答主流程</title>
-  <desc id="desc">用户查询分别进入 BM25 关键词检索和 BGE-M3 与 FAISS 语义检索。两路候选经归一化和加权融合后返回论文列表，并按需复用检索结果构建上下文、调用 LLM 和校验引用编号。</desc>
+  <desc id="desc">用户查询分别进入 BM25 关键词检索和 BGE-M3 与 FAISS 语义检索。两路候选经归一化和加权融合后返回论文列表；按需取前五条候选，核验来源后按顺序整块加入预算，下一块放不下就停止，再调用 LLM 和校验引用编号。</desc>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse">
       <path d="M1 1 6 4 1 7" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -13,7 +13,7 @@
       .line { fill: none; stroke: #94a3b8; stroke-width: 1.8; stroke-linejoin: round; marker-end: url(#arrow); }
     </style>
   </defs>
-  <rect x="1" y="1" width="958" height="622" rx="18" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="1" y="1" width="958" height="648" rx="18" fill="#ffffff" stroke="#e2e8f0"/>
   <text x="38" y="49" class="heading">从论文检索到引用回答</text>
   <text x="38" y="76" class="detail">Hybrid 主流程</text>
   <rect x="739" y="31" width="181" height="31" rx="15.5" fill="#f1f5f9"/>
@@ -39,10 +39,11 @@
 
   <path class="line" d="M440 435 V455 H240 V491"/>
   <path class="line" d="M520 435 V455 H720 V491"/>
-  <rect x="80" y="495" width="320" height="89" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
-  <text x="240" y="530" text-anchor="middle" class="label">论文列表</text>
-  <text x="240" y="560" text-anchor="middle" class="detail">标题 · 年份 · 摘要</text>
-  <rect x="540" y="495" width="360" height="89" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
-  <text x="720" y="530" text-anchor="middle" class="label" style="fill:#1d4ed8">引用问答（按需）</text>
-  <text x="720" y="560" text-anchor="middle" class="detail">证据上下文 → LLM → 引用编号校验</text>
+  <rect x="80" y="495" width="320" height="112" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="240" y="540" text-anchor="middle" class="label">论文列表</text>
+  <text x="240" y="572" text-anchor="middle" class="detail">标题 · 年份 · 摘要</text>
+  <rect x="540" y="495" width="360" height="112" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="720" y="526" text-anchor="middle" class="label" style="fill:#1d4ed8">引用问答（按需）</text>
+  <text x="720" y="555" text-anchor="middle" class="detail">前 5 条候选 · 按预算整块加入</text>
+  <text x="720" y="582" text-anchor="middle" class="detail">LLM 回答 → 引用编号校验</text>
 </svg>
