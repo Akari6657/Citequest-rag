@@ -58,7 +58,7 @@ class SearchRequest(BaseModel):
     top_k: int = Field(default=10, ge=1, le=100, description="Number of results to return")
     mode: Literal["lexical", "vector", "hybrid"] = Field(
         default="lexical",
-        description="Search mode — only 'lexical' is supported in v0.1",
+        description="Keyword, semantic, or weighted Hybrid search",
     )
     year_from: int | None = Field(
         default=None,
@@ -156,7 +156,11 @@ class AskRequest(BaseModel):
     )
     pre_retrieved: list[dict] | None = Field(
         default=None,
-        description="Pre-retrieved results from /search. When provided, skips internal retrieval.",
+        description=(
+            "Pre-retrieved results from /search. Skips internal retrieval, but "
+            "chunk existence and paper ownership are checked against SQLite; "
+            "evidence text and citation metadata always come from the database."
+        ),
     )
 
 

@@ -1,4 +1,4 @@
-"""Runtime path configuration for CiteQuest-RAG.
+"""Runtime configuration for CiteQuest-RAG.
 
 The default app uses ``data/indexes``.  Environment variables let us point the
 same API at a smaller demo index without changing code or rebuilding the whole
@@ -15,11 +15,14 @@ DEFAULT_DB_PATH = Path("data/indexes/metadata.sqlite")
 DEFAULT_FAISS_DIR = Path("data/indexes/faiss")
 DEFAULT_HYBRID_ALPHA = 0.5
 DEFAULT_REWRITE_TIMEOUT_SECONDS = 2.0
+DEFAULT_RAG_CONTEXT_TOKENS = 8000
+APP_VERSION = "0.5.0"
 
 DB_PATH_ENV = "CITEQUEST_DB_PATH"
 FAISS_DIR_ENV = "CITEQUEST_FAISS_DIR"
 HYBRID_ALPHA_ENV = "CITEQUEST_HYBRID_ALPHA"
 REWRITE_TIMEOUT_ENV = "CITEQUEST_REWRITE_TIMEOUT_SECONDS"
+RAG_CONTEXT_TOKENS_ENV = "CITEQUEST_RAG_CONTEXT_TOKENS"
 
 
 def _path_from_env(name: str, default: Path) -> Path:
@@ -90,3 +93,24 @@ def resolve_hybrid_alpha(request_alpha: float | None) -> float:
     if request_alpha is None:
         return get_hybrid_alpha()
     return validate_hybrid_alpha(request_alpha, source="request alpha")
+
+
+def validate_rag_context_tokens(value: object, *, source: str = "max_tokens") -> int:
+    """Validate the positive integer budget for estimated evidence tokens."""
+    try:
+        if isinstance(value, bool) or not isinstance(value, (str, int)):
+            raise ValueError
+        tokens = int(value)
+        if tokens <= 0:
+            raise ValueError
+    except ValueError as exc:
+        raise ValueError(f"{source} must be a positive integer; got {value!r}") from exc
+    return tokens
+
+
+def get_rag_context_tokens() -> int:
+    """Return the runtime budget for evidence, excluding prompts and output."""
+    return validate_rag_context_tokens(
+        os.getenv(RAG_CONTEXT_TOKENS_ENV, DEFAULT_RAG_CONTEXT_TOKENS),
+        source=RAG_CONTEXT_TOKENS_ENV,
+    )

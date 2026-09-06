@@ -3,9 +3,8 @@
 import pytest
 
 from app.rag.citation import extract_citations, verify_citations
-from app.rag.context_builder import build_evidence, _estimate_tokens
+from app.rag.context_builder import _estimate_tokens
 from app.rag.llm_provider import (
-    LLMResponse,
     MockLLMProvider,
     OpenAICompatibleProvider,
     create_provider,
@@ -91,48 +90,13 @@ class TestBuildPrompts:
 
 class TestEstimateTokens:
     def test_empty(self):
-        assert _estimate_tokens("") == 1
+        assert _estimate_tokens("") == 0
 
     def test_short(self):
-        assert _estimate_tokens("hello world") == 7  # 15 chars / 1.5 = 10 -> max(1, 10)
+        assert _estimate_tokens("hello world") == 3
 
-
-class TestBuildEvidence:
-    def _make_result(self, chunk_id, paper_id, title, **kwargs):
-        return SearchResult(
-            paper_id=paper_id,
-            chunk_id=chunk_id,
-            title=title,
-            year=kwargs.get("year"),
-            venue=kwargs.get("venue"),
-            authors=kwargs.get("authors", []),
-            score=kwargs.get("score", 0.5),
-            snippet=kwargs.get("snippet", ""),
-        )
-
-    def test_empty_results(self):
-        text, cmap = build_evidence([])
-        assert text == ""
-        assert cmap == []
-
-    def test_formats_citation_ids(self):
-        """build_evidence should assign [1], [2] IDs."""
-        r1 = self._make_result("C1", "P1", "Paper One")
-        r2 = self._make_result("C2", "P2", "Paper Two")
-        text, cmap = build_evidence([r1, r2])
-        assert "[1]" in text
-        assert "[2]" in text
-        assert cmap[0]["citation_id"] == 1
-        assert cmap[1]["citation_id"] == 2
-
-    def test_token_budget(self):
-        """With a tiny token budget, only 1 result should be included."""
-        r1 = self._make_result("C1", "P1", "X" * 200)
-        r2 = self._make_result("C2", "P2", "Y" * 200)
-        text, cmap = build_evidence([r1, r2], max_tokens=10)
-        assert "[1]" in text
-        assert "[2]" not in text  # budget was hit
-        assert len(cmap) == 1
+    def test_non_ascii_uses_a_conservative_allowance(self):
+        assert _estimate_tokens("abcd中") == 3  # 1 ASCII token + 2 for the CJK character.
 
 
 class TestRAGHybridAlpha:

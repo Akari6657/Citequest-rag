@@ -12,7 +12,8 @@ __pycache__/
 
 # Local planning and benchmark docs.
 docs/*
-# Public README visuals only.
+# Public API contract and README visuals.
+!docs/API_CONTRACT.md
 !docs/images/
 docs/images/*
 !docs/images/architecture.svg

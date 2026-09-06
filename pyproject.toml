@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "citequest-rag"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Local-first hybrid academic search and citation-grounded RAG with reproducible retrieval evaluation"
 readme = "README.md"
 license = {text = "MIT"}
@@ -56,6 +56,9 @@ all = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*", "scripts*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "app.core.config.APP_VERSION"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

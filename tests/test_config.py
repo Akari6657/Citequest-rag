@@ -11,10 +11,12 @@ from app.core.config import (
     DEFAULT_FAISS_DIR,
     DEFAULT_HYBRID_ALPHA,
     DEFAULT_REWRITE_TIMEOUT_SECONDS,
+    DEFAULT_RAG_CONTEXT_TOKENS,
     get_db_path,
     get_faiss_dir,
     get_hybrid_alpha,
     get_rewrite_timeout_seconds,
+    get_rag_context_tokens,
     resolve_hybrid_alpha,
 )
 from app.main import health
@@ -111,3 +113,17 @@ def test_health_uses_env_paths(monkeypatch, tmp_path):
     assert response["capabilities"]["lexical_search"] is True
     assert response["capabilities"]["vector_search"] is True
     assert response["capabilities"]["hybrid_search"] is True
+
+
+def test_rag_context_budget_default_and_override(monkeypatch):
+    monkeypatch.delenv("CITEQUEST_RAG_CONTEXT_TOKENS", raising=False)
+    assert get_rag_context_tokens() == DEFAULT_RAG_CONTEXT_TOKENS == 8000
+    monkeypatch.setenv("CITEQUEST_RAG_CONTEXT_TOKENS", "12000")
+    assert get_rag_context_tokens() == 12000
+
+
+@pytest.mark.parametrize("value", ["", "invalid", "0", "-1", "1.5", "nan", "inf"])
+def test_invalid_rag_context_budget_fails_clearly(monkeypatch, value):
+    monkeypatch.setenv("CITEQUEST_RAG_CONTEXT_TOKENS", value)
+    with pytest.raises(ValueError, match="CITEQUEST_RAG_CONTEXT_TOKENS"):
+        get_rag_context_tokens()

@@ -2,7 +2,9 @@
 RAG evaluation: measure citation quality.
 
 Metrics:
-- citation_precision  — fraction of [N] markers that map to real evidence
+- citation_precision  — valid cited IDs / all cited IDs, deduplicated per answer;
+                        null when no citations were produced
+- citation_validation_pass_rate — fraction of answers with citation_valid=true
 - no_citation_rate    — fraction of answers with zero citations
 - avg_citations       — average number of citation markers per answer
 - avg_latency_ms      — average end-to-end /ask response time
@@ -59,6 +61,7 @@ def run_rag_eval(
 
     results_detail: list[dict] = []
     total_citations = 0
+    total_valid_citations = 0
     no_citation_count = 0
     total_invalid = 0
     latencies: list[float] = []
@@ -69,7 +72,10 @@ def run_rag_eval(
 
         cited = extract_citations(r.answer)
         n_cited = len(cited)
+        evidence_ids = {citation.citation_id for citation in r.citations}
+        n_valid = sum(citation_id in evidence_ids for citation_id in cited)
         total_citations += n_cited
+        total_valid_citations += n_valid
         latencies.append(r.latency_ms)
 
         if n_cited == 0:
@@ -81,6 +87,8 @@ def run_rag_eval(
             "question": q,
             "answer": r.answer[:300],
             "citations_used": n_cited,
+            "valid_citations": n_valid,
+            "invalid_citations": n_cited - n_valid,
             "evidence_count": len(r.citations),
             "citation_valid": r.citation_valid,
             "warnings": r.citation_warnings,
@@ -90,7 +98,13 @@ def run_rag_eval(
     n = len(questions)
     summary = {
         "queries": n,
-        "citation_precision": round(1.0 - total_invalid / n, 4) if n > 0 else 0,
+        "citation_precision": (
+            round(total_valid_citations / total_citations, 4)
+            if total_citations else None
+        ),
+        "citation_validation_pass_rate": round(1.0 - total_invalid / n, 4),
+        "total_citations": total_citations,
+        "valid_citations": total_valid_citations,
         "no_citation_rate": round(no_citation_count / n, 4) if n > 0 else 0,
         "avg_citations_per_answer": round(total_citations / n, 2) if n > 0 else 0,
         "avg_latency_ms": round(np.mean(latencies), 2) if latencies else 0,

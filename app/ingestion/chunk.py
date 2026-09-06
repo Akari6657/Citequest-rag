@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 CHUNK_TARGET_TOKENS = 800
-"""Target size for body chunks. BGE-M3 handles 8192 easily; 800 keeps each
-chunk focused enough to be useful as LLM evidence (2000t context budget)."""
+"""Target size for body chunks; several can fit into the separately configured
+RAG evidence budget. Index chunking is independent of runtime context size."""
 
 CHUNK_OVERLAP_WINDOW = 120
 """Token overlap for sliding window on very long paragraphs (~15% of target)."""

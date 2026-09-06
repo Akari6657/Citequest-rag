@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes_search import router as search_router
 from app.api.routes_ask import router as ask_router
-from app.core.config import get_db_path, get_faiss_dir
+from app.core.config import APP_VERSION, get_db_path, get_faiss_dir
 
 # ---------------------------------------------------------------------------
 # App factory
@@ -25,7 +25,7 @@ from app.core.config import get_db_path, get_faiss_dir
 app = FastAPI(
     title="CiteQuest-RAG",
     description="Academic Search + Citation-grounded RAG + AI Overview",
-    version="0.5.0",
+    version=APP_VERSION,
 )
 
 app.include_router(search_router)

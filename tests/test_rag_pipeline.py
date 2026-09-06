@@ -24,8 +24,8 @@ def evidence_db(tmp_path):
         conn.executescript(CREATE_TABLES)
         for number in range(1, 4):
             conn.execute(
-                "INSERT INTO papers(paper_id, title, year) VALUES (?, ?, ?)",
-                (f"P{number}", f"Paper {number}", 2024),
+                "INSERT INTO papers(paper_id, title, year, url) VALUES (?, ?, ?, ?)",
+                (f"P{number}", f"Paper {number}", 2024, f"https://example.test/paper/{number}"),
             )
         for number, paper_id in enumerate(["P1", "P1", "P2", "P3"], start=1):
             chunk_id = f"C{number}"
@@ -135,7 +135,7 @@ def test_pre_retrieved_answers_keep_evidence_and_citation_warnings(
         "effective_alpha": 0.65,
         "citations": [
             {"citation_id": i, "paper_id": "P1", "chunk_id": f"C{i}",
-             "title": "Paper 1", "url": "https://arxiv.org/abs/P1"}
+             "title": "Paper 1", "url": "https://example.test/paper/1"}
             for i in (1, 2)
         ],
         "citation_valid": valid,
@@ -183,7 +183,12 @@ def test_standalone_answers_retrieve_in_the_requested_mode(monkeypatch, evidence
         assert selected.call_args.kwargs["alpha"] == 0.65
 
 
-@pytest.mark.parametrize("pre_retrieved", [None, []], ids=["no-hits", "explicit-empty"])
+@pytest.mark.parametrize(
+    "pre_retrieved", [None, [], [{
+        "paper_id": "P2", "chunk_id": "C1", "title": "Wrong owner",
+        "year": None, "venue": None, "score": 1.0, "snippet": "Untrusted evidence",
+    }]], ids=["no-hits", "explicit-empty", "mismatched-evidence"],
+)
 def test_no_evidence_skips_generation_and_verification(monkeypatch, evidence_db, pre_retrieved):
     db_path, _ = evidence_db
     monkeypatch.setattr(
@@ -253,3 +258,14 @@ def test_provider_failure_does_not_emit_a_successful_answer(monkeypatch, evidenc
         asyncio.run(consume_failure())
     assert [name for name, _ in emitted] == ["status", "status"]
     assert [data["phase"] for _, data in emitted] == ["organizing", "generating"]
+
+
+def test_runtime_budget_is_applied_to_both_answer_paths(monkeypatch, evidence_db):
+    db_path, results = evidence_db
+    monkeypatch.setenv("CITEQUEST_RAG_CONTEXT_TOKENS", "1")
+    response = assert_same_response(
+        dict(question="How does grounding work?", pre_retrieved=results, db_path=db_path),
+        ["organizing"],
+    )
+    assert response["citations"] == []
+    assert response["answer"] == "未找到相关证据，无法回答该问题。"
