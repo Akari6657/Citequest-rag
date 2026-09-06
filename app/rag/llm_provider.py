@@ -141,8 +141,6 @@ class OpenAICompatibleProvider(LLMProvider):
         Returns:
             LLMResponse with text, model, usage, and latency.
         """
-        import json
-
         import httpx
 
         url = f"{self.base_url}/chat/completions"

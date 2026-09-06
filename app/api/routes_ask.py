@@ -67,7 +67,7 @@ async def ask_question_stream(request: AskRequest):
     if not router_result.should_rag:
         logger.info("ask/stream skipped by router: %s", router_result.reason)
         return StreamingResponse(
-            _router_skip_stream(request.question, router_result.reason),
+            _router_skip_stream(router_result.reason),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
@@ -100,7 +100,7 @@ async def ask_question_stream(request: AskRequest):
     )
 
 
-async def _router_skip_stream(question: str, reason: str):
+async def _router_skip_stream(reason: str):
     """Yield a minimal SSE stream when the router says no RAG is needed."""
     import json
     yield f"event: status\ndata: {json.dumps({'phase': 'skipped', 'message': f'路由判断：{reason}，跳过 AI Overview'})}\n\n"

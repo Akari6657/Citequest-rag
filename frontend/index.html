@@ -60,15 +60,15 @@
       <!-- Mode switcher (pill-style radio group) -->
       <div class="mode-switcher">
         <input type="radio" name="mode" value="hybrid" id="m-hybrid"
-               x-model="mode" @change="onModeChange">
+               x-model="mode">
         <label for="m-hybrid">Hybrid</label>
 
         <input type="radio" name="mode" value="lexical" id="m-lexical"
-               x-model="mode" @change="onModeChange">
+               x-model="mode">
         <label for="m-lexical">Lexical</label>
 
         <input type="radio" name="mode" value="vector" id="m-vector"
-               x-model="mode" @change="onModeChange">
+               x-model="mode">
         <label for="m-vector">Vector</label>
       </div>
 
@@ -125,7 +125,7 @@
     <section class="overview" x-show="overview && !overviewLoading" x-transition>
       <h3>
         AI Overview
-        <small x-text="'· ' + formatLatency(overview?.latency_ms) + ' · ' + (overview?.model || '')"></small>
+        <small x-text="'· ' + formatLatency(overview?.latency_ms)"></small>
       </h3>
       <div class="answer" x-text="overview?.answer"></div>
 
@@ -141,7 +141,7 @@
                 :aria-expanded="showCitations">
           <span class="citation-arrow" :class="{ 'is-open': showCitations }">▸</span>
           📚 引用来源
-          <span class="citation-count" x-text="'(' + overview.citations.length + ')'"></span>
+          <span class="citation-count" x-text="'(' + (overview?.citations?.length || 0) + ')'"></span>
         </button>
 
         <ol class="citation-list" x-show="showCitations" x-transition>
@@ -187,11 +187,6 @@
         <template x-for="(r, idx) in results" :key="r.chunk_id || idx">
           <article class="result-card">
 
-            <!-- Compare checkbox (hidden until compare feature is enabled) -->
-            <input type="checkbox" class="compare-check"
-                   x-model="selected"
-                   :value="r.paper_id">
-
             <div class="result-body">
               <div class="r-title" x-html="highlightTitle(r.title, query)"></div>
               <div class="r-meta">
@@ -209,36 +204,6 @@
         </template>
       </div>
     </template>
-
-    <!-- ==================================================================
-         Compare bar — floating bottom bar (hidden until compare feature)
-         Currently: x-show always false. To enable, remove the `&& false`.
-         ================================================================== -->
-
-    <div class="compare-bar"
-         x-show="selected.length >= 2 && false"
-         x-transition>
-      已选 <strong x-text="selected.length"></strong> 篇论文
-      <button @click="comparing = true">
-        对比选中论文
-      </button>
-      <button class="compare-cancel"
-              @click="selected = []; comparing = false; comparisonResult = null">
-        取消
-      </button>
-    </div>
-
-    <!-- ==================================================================
-         Compare result (hidden until compare feature is implemented)
-         ================================================================== -->
-
-    <section class="compare-result"
-             x-show="comparisonResult"
-             x-transition>
-      <h3>📊 论文对比分析</h3>
-      <!-- Table will be populated when compare endpoint exists -->
-      <div x-html="comparisonResult"></div>
-    </section>
 
   </div><!-- /.app-container -->
 
@@ -263,31 +228,15 @@
       overview: null,
       totalResults: 0,
       elapsed: 0,
-      rewriteKeywords: "",
 
       // Citation toggle
       showCitations: true,
 
       // Async AI Overview loading (SSE-driven)
       overviewLoading: false,
-      overviewPhase: "retrieving",
       overviewMessage: "",
 
-      // Future compare feature (not wired to backend yet)
-      selected: [],
-      comparing: false,
-      comparisonResult: null,
-
-      // ---- derived ----
-      get showAlpha() {
-        return this.mode === "hybrid";
-      },
-
       // ---- methods ----
-      onModeChange() {
-        // Placeholder for future mode-specific behavior
-      },
-
       async doSearch() {
         const q = this.query.trim();
         if (!q) return;
@@ -319,14 +268,13 @@
         this.overviewLoading = false;
         this.totalResults = 0;
         this.elapsed = 0;
-        this.rewriteKeywords = "";
-        if (this._overviewTimer) { clearInterval(this._overviewTimer); this._overviewTimer = null; }
         if (this._abortStream) { this._abortStream.abort(); this._abortStream = null; }
 
         const start = performance.now();
         const wantOverview = this.includeOverview;
         const mode = this.mode;
         const alpha = Number(this.alpha);
+        let shouldRag = false;
 
         // ---- Phase 1: Search (always, fast) ----
         try {
@@ -342,8 +290,7 @@
 
           this.results = data.results || [];
           this.totalResults = data.total_results || this.results.length;
-          this.rewriteKeywords = data.rewrite_keywords || "";
-          this._shouldRag = data.should_rag || false;  // save for Phase 2 check
+          shouldRag = data.should_rag || false;
         } catch (e) {
           this.error = e.message;
           this.loading = false;
@@ -355,10 +302,9 @@
 
         // ---- Phase 2: AI Overview (async SSE, only if toggle on + router says yes) ----
         if (!wantOverview) return;
-        if (!this._shouldRag) return;  // router decided against RAG (e.g. short keywords)
+        if (!shouldRag) return;  // router decided against RAG (e.g. short keywords)
 
         this.overviewLoading = true;
-        this.overviewPhase = "retrieving";
         this.overviewMessage = "正在检索相关论文...";
 
         const overviewStart = performance.now();
@@ -373,7 +319,6 @@
           },
           onEvent: (type, data) => {
             if (type === "status") {
-              this.overviewPhase = data.phase || this.overviewPhase;
               this.overviewMessage = data.message || this.overviewMessage;
             } else if (type === "result") {
               data.latency_ms = Math.round(performance.now() - overviewStart);

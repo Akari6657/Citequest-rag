@@ -790,7 +790,6 @@ def _escape(value: Any) -> str:
 def render_ann_probe_markdown(report: dict[str, Any]) -> str:
     """Render an answer-first technical report."""
     current = report["methods"]["current"]
-    exhaustive = report["methods"]["exhaustive"]
     top20 = report["target_rank_comparison"]["top20"]
     lines = [
         "# CiteQuest ANN Approximation Probe v1.3.1",

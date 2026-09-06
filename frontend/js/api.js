@@ -1,7 +1,7 @@
 /**
  * API client for CiteQuest-RAG.
  *
- * All functions return the parsed JSON body, or throw on network / HTTP error.
+ * Search returns JSON; AI Overview delivers SSE events through callbacks.
  */
 
 const API_BASE = "";
@@ -16,20 +16,6 @@ async function apiPost(path, body, signal) {
     body: JSON.stringify(body),
     signal,
   });
-
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "unknown error");
-    throw new Error(`HTTP ${resp.status}: ${text}`);
-  }
-
-  return resp.json();
-}
-
-/**
- * Generic GET helper.
- */
-async function apiGet(path, signal) {
-  const resp = await fetch(`${API_BASE}${path}`, { signal });
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => "unknown error");
@@ -61,31 +47,6 @@ async function searchPapers({
     year_from,
     year_to,
   }, signal);
-}
-
-/**
- * POST /ask — ask a question with citation-grounded RAG.
- */
-async function askQuestion({
-  question,
-  top_k = 8,
-  retrieval_mode = "hybrid",
-  alpha = 0.5,
-  signal = null,
-} = {}) {
-  return apiPost("/ask", {
-    question,
-    top_k,
-    retrieval_mode,
-    alpha,
-  }, signal);
-}
-
-/**
- * GET /health — check API and index status.
- */
-async function checkHealth(signal) {
-  return apiGet("/health", signal);
 }
 
 /**

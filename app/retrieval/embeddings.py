@@ -17,14 +17,11 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from sentence_transformers import SentenceTransformer
 
 
 class EmbeddingBackend(Protocol):

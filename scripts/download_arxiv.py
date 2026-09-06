@@ -20,7 +20,6 @@ from datetime import date, datetime, timezone
 import json
 import logging
 import sys
-import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

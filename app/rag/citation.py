@@ -14,11 +14,8 @@ Usage:
 from __future__ import annotations
 
 import re
-import logging
 from dataclasses import dataclass, field
 from typing import Any
-
-logger = logging.getLogger(__name__)
 
 # Matches [1], [2], [123], etc.
 _CITATION_RE = re.compile(r"\[(\d+)\]")

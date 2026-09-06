@@ -25,7 +25,7 @@ from app.core.config import (
     get_faiss_dir,
     validate_hybrid_alpha,
 )
-from app.core.schemas import AskRequest, AskResponse, CitationInfo, SearchResult
+from app.core.schemas import AskResponse, CitationInfo, SearchResult
 from app.rag.citation import verify_citations
 from app.rag.context_builder import build_evidence
 from app.rag.llm_provider import create_provider
