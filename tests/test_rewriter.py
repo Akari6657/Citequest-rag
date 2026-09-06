@@ -52,8 +52,9 @@ def test_successful_rewrite_expands_original_query(monkeypatch):
     monkeypatch.setattr(rewriter, "is_llm_configured", lambda: True)
     monkeypatch.setattr(rewriter, "get_rewrite_timeout_seconds", lambda: 0.75)
 
-    def fake_create_provider(*, timeout):
+    def fake_create_provider(*, timeout, short_task):
         observed["timeout"] = timeout
+        observed["short_task"] = short_task
         return provider
 
     monkeypatch.setattr(rewriter, "create_provider", fake_create_provider)
@@ -62,6 +63,7 @@ def test_successful_rewrite_expands_original_query(monkeypatch):
     lexical_query, keywords = rewriter.prepare_lexical_query(query)
 
     assert observed["timeout"] == 0.75
+    assert observed["short_task"] is True
     assert keywords == "GAN mode-collapse convergence"
     assert lexical_query == f"{query} {keywords}"
     assert provider.observed["temperature"] == 0.0

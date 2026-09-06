@@ -26,6 +26,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 # Load .env from project root (if it exists) so env vars are available
 # before create_provider() reads them.
@@ -119,11 +120,13 @@ class OpenAICompatibleProvider(LLMProvider):
         api_key: str | None = None,
         model: str | None = None,
         timeout: float = 60.0,
+        short_task: bool = False,
     ):
         self.base_url = (base_url or os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1")).rstrip("/")
         self.api_key = api_key or os.getenv("LLM_API_KEY", "")
         self.model = model or os.getenv("LLM_MODEL", "deepseek-chat")
         self.timeout = timeout
+        self.short_task = short_task
 
     def generate(
         self,
@@ -159,6 +162,11 @@ class OpenAICompatibleProvider(LLMProvider):
             "messages": messages,
             **kwargs,
         }
+        # DeepSeek defaults to thinking mode. Keyword extraction needs the
+        # small output budget for its answer, not a reasoning trace. Keep
+        # provider-specific fields away from other compatible endpoints.
+        if self.short_task and urlsplit(self.base_url).hostname == "api.deepseek.com":
+            body.setdefault("thinking", {"type": "disabled"})
 
         logger.info("Calling %s model=%s ...", url, self.model)
         t0 = time.perf_counter()
@@ -206,7 +214,7 @@ def is_llm_configured() -> bool:
     return bool(os.getenv("LLM_API_KEY", "").strip())
 
 
-def create_provider(*, timeout: float | None = None) -> LLMProvider:
+def create_provider(*, timeout: float | None = None, short_task: bool = False) -> LLMProvider:
     """Create the appropriate LLM provider based on environment.
 
     If LLM_API_KEY is set, returns an OpenAICompatibleProvider (DeepSeek).
@@ -215,12 +223,14 @@ def create_provider(*, timeout: float | None = None) -> LLMProvider:
     Args:
         timeout: Optional request timeout override. When omitted, the provider's
                  normal timeout is preserved.
+        short_task: Disable thinking for short tasks on the official DeepSeek
+                    endpoint. Other providers retain their normal behavior.
     """
     if is_llm_configured():
         logger.info("Using OpenAICompatibleProvider (model=%s)", os.getenv("LLM_MODEL", "deepseek-chat"))
         if timeout is None:
-            return OpenAICompatibleProvider()
-        return OpenAICompatibleProvider(timeout=timeout)
+            return OpenAICompatibleProvider(short_task=short_task)
+        return OpenAICompatibleProvider(timeout=timeout, short_task=short_task)
     else:
         logger.info("No LLM_API_KEY set — using MockLLMProvider")
         return MockLLMProvider()

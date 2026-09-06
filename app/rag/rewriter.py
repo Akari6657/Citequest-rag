@@ -113,7 +113,7 @@ def rewrite_query(query: str) -> str:
     started = time.perf_counter()
 
     try:
-        llm = create_provider(timeout=timeout)
+        llm = create_provider(timeout=timeout, short_task=True)
         response = llm.generate(
             user=prompt,
             temperature=0.0,

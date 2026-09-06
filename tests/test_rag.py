@@ -211,7 +211,39 @@ class TestCreateProvider:
     def test_real_provider_accepts_timeout_override(self, monkeypatch):
         monkeypatch.setenv("LLM_API_KEY", "test-key")
 
-        provider = create_provider(timeout=0.75)
+        provider = create_provider(timeout=0.75, short_task=True)
 
         assert isinstance(provider, OpenAICompatibleProvider)
         assert provider.timeout == 0.75
+        assert provider.short_task is True
+
+    @pytest.mark.parametrize("base_url,short_task,expected_thinking", [
+        ("https://api.deepseek.com/v1", True, {"type": "disabled"}),
+        ("https://api.deepseek.com", False, None),
+        ("https://compatible.example/v1", True, None),
+    ])
+    def test_short_task_request_options_are_scoped_to_deepseek(
+        self, monkeypatch, base_url, short_task, expected_thinking,
+    ):
+        import httpx
+
+        observed = {}
+
+        def fake_post(url, **kwargs):
+            observed.update(kwargs["json"])
+            return httpx.Response(200, request=httpx.Request("POST", url), json={
+                "choices": [{"message": {"content": "retrieval evaluation"}}],
+            })
+
+        monkeypatch.setattr(httpx, "post", fake_post)
+        provider = OpenAICompatibleProvider(
+            base_url=base_url, api_key="test-key", model="deepseek-v4-flash",
+            short_task=short_task,
+        )
+        response = provider.generate(user="keywords", max_tokens=128)
+        assert response.text == "retrieval evaluation"
+        assert observed["max_tokens"] == 128
+        if expected_thinking is None:
+            assert "thinking" not in observed
+        else:
+            assert observed["thinking"] == expected_thinking
