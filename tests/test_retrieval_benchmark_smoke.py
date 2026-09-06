@@ -5,39 +5,11 @@ from __future__ import annotations
 import json
 import sqlite3
 
-import numpy as np
-
 from app.eval.fusion_experiment import run_fusion_comparison
 from app.eval.retrieval_eval import EvalQuery, run_benchmark, write_benchmark_outputs
 
 
-CONCEPTS = ("retrieval", "vision", "code", "database", "graph", "robot")
-
-
-def _encode(texts):
-    vectors = np.zeros((len(texts), len(CONCEPTS)), dtype=np.float32)
-    for row, text in enumerate(texts):
-        lowered = text.lower()
-        for column, concept in enumerate(CONCEPTS):
-            if concept in lowered:
-                vectors[row, column] = 1.0
-        if not vectors[row].any():
-            vectors[row, -1] = 1.0
-        vectors[row] /= np.linalg.norm(vectors[row])
-    return vectors
-
-
-class TinyEmbeddingModel:
-    dim = len(CONCEPTS)
-
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def encode(self, texts, *, show_progress=False, **kwargs):
-        return _encode(texts)
-
-
-def _build_smoke_artifacts(tmp_path):
+def _build_smoke_artifacts(tmp_path, embedding_model):
     import faiss
 
     db_path = tmp_path / "metadata.sqlite"
@@ -91,7 +63,7 @@ def _build_smoke_artifacts(tmp_path):
     conn.commit()
     conn.close()
 
-    vectors = _encode([chunk[2] for chunk in chunks])
+    vectors = embedding_model().encode([chunk[2] for chunk in chunks])
     index = faiss.IndexFlatIP(vectors.shape[1])
     index.add(vectors)
     faiss.write_index(index, str(index_dir / "index.faiss"))
@@ -107,11 +79,11 @@ def _build_smoke_artifacts(tmp_path):
     return db_path, index_dir
 
 
-def test_end_to_end_retrieval_benchmark_smoke(tmp_path, monkeypatch):
+def test_end_to_end_retrieval_benchmark_smoke(tmp_path, monkeypatch, tiny_embedding_model):
     import app.retrieval.vector_store as vector_store
 
-    db_path, index_dir = _build_smoke_artifacts(tmp_path)
-    monkeypatch.setattr(vector_store, "EmbeddingModel", TinyEmbeddingModel)
+    db_path, index_dir = _build_smoke_artifacts(tmp_path, tiny_embedding_model)
+    monkeypatch.setattr(vector_store, "EmbeddingModel", tiny_embedding_model)
     monkeypatch.setattr(vector_store, "_index_cache", None)
     monkeypatch.setattr(vector_store, "_model_cache", None)
 
@@ -167,13 +139,13 @@ def test_end_to_end_retrieval_benchmark_smoke(tmp_path, monkeypatch):
     assert "Smoke / Development Run" in markdown_path.read_text(encoding="utf-8")
 
 
-def test_end_to_end_fusion_comparison_six_query_smoke(tmp_path, monkeypatch):
+def test_end_to_end_fusion_comparison_six_query_smoke(tmp_path, monkeypatch, tiny_embedding_model):
     import app.retrieval.vector_store as vector_store
     from app.retrieval.lexical import search_lexical
     from app.retrieval.vector_store import search_vector
 
-    db_path, index_dir = _build_smoke_artifacts(tmp_path)
-    monkeypatch.setattr(vector_store, "EmbeddingModel", TinyEmbeddingModel)
+    db_path, index_dir = _build_smoke_artifacts(tmp_path, tiny_embedding_model)
+    monkeypatch.setattr(vector_store, "EmbeddingModel", tiny_embedding_model)
     monkeypatch.setattr(vector_store, "_index_cache", None)
     monkeypatch.setattr(vector_store, "_model_cache", None)
 

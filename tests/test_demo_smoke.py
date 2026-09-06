@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 import sqlite3
 
-import numpy as np
-
 from app.core.schemas import SearchResult
 from app.eval.demo_smoke import (
     collect_database_signature,
@@ -19,33 +17,7 @@ from app.eval.demo_smoke import (
 from app.retrieval.embeddings import DEFAULT_MODEL_NAME
 
 
-CONCEPTS = ("retrieval", "vision", "code", "database", "graph", "robot")
-
-
-def _encode(texts):
-    vectors = np.zeros((len(texts), len(CONCEPTS)), dtype=np.float32)
-    for row, text in enumerate(texts):
-        lowered = text.lower()
-        for column, concept in enumerate(CONCEPTS):
-            if concept in lowered:
-                vectors[row, column] = 1.0
-        if not vectors[row].any():
-            vectors[row, -1] = 1.0
-        vectors[row] /= np.linalg.norm(vectors[row])
-    return vectors
-
-
-class TinyEmbeddingModel:
-    dim = len(CONCEPTS)
-
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def encode(self, texts, *, show_progress=False, **kwargs):
-        return _encode(texts)
-
-
-def _build_demo_artifacts(tmp_path):
+def _build_demo_artifacts(tmp_path, embedding_model):
     import faiss
 
     db_path = tmp_path / "metadata.sqlite"
@@ -129,7 +101,7 @@ def _build_demo_artifacts(tmp_path):
     conn.commit()
     conn.close()
 
-    vectors = _encode([chunk[2] for chunk in chunks])
+    vectors = embedding_model().encode([chunk[2] for chunk in chunks])
     index = faiss.IndexFlatIP(vectors.shape[1])
     index.add(vectors)
     faiss.write_index(index, str(index_dir / "index.faiss"))
@@ -164,8 +136,8 @@ def _check(report, name):
     return next(item for item in report["checks"] if item["name"] == name)
 
 
-def test_validate_demo_artifacts_accepts_consistent_index(tmp_path):
-    db_path, index_dir, raw_path, paper_count = _build_demo_artifacts(tmp_path)
+def test_validate_demo_artifacts_accepts_consistent_index(tmp_path, tiny_embedding_model):
+    db_path, index_dir, raw_path, paper_count = _build_demo_artifacts(tmp_path, tiny_embedding_model)
 
     report = validate_demo_artifacts(
         db_path=db_path,
@@ -182,8 +154,8 @@ def test_validate_demo_artifacts_accepts_consistent_index(tmp_path):
     assert _check(report, "database_matches_faiss_build")["passed"] is True
 
 
-def test_validate_demo_artifacts_rejects_id_map_order_mismatch(tmp_path):
-    db_path, index_dir, raw_path, paper_count = _build_demo_artifacts(tmp_path)
+def test_validate_demo_artifacts_rejects_id_map_order_mismatch(tmp_path, tiny_embedding_model):
+    db_path, index_dir, raw_path, paper_count = _build_demo_artifacts(tmp_path, tiny_embedding_model)
     id_map_path = index_dir / "id_map.json"
     id_map = json.loads(id_map_path.read_text(encoding="utf-8"))
     id_map[0], id_map[1] = id_map[1], id_map[0]
@@ -200,8 +172,8 @@ def test_validate_demo_artifacts_rejects_id_map_order_mismatch(tmp_path):
     assert _check(report, "id_map_matches_sqlite_order")["passed"] is False
 
 
-def test_validate_demo_artifacts_rejects_partial_checkpoint(tmp_path):
-    db_path, index_dir, raw_path, paper_count = _build_demo_artifacts(tmp_path)
+def test_validate_demo_artifacts_rejects_partial_checkpoint(tmp_path, tiny_embedding_model):
+    db_path, index_dir, raw_path, paper_count = _build_demo_artifacts(tmp_path, tiny_embedding_model)
     (index_dir / ".build").mkdir()
 
     report = validate_demo_artifacts(
@@ -249,12 +221,12 @@ def test_run_retrieval_smoke_reports_latency_without_quality_metrics(tmp_path):
 
 
 def test_complete_demo_smoke_uses_real_retrievers_and_mock_rag(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, tiny_embedding_model
 ):
     import app.retrieval.vector_store as vector_store
 
-    db_path, index_dir, raw_path, paper_count = _build_demo_artifacts(tmp_path)
-    monkeypatch.setattr(vector_store, "EmbeddingModel", TinyEmbeddingModel)
+    db_path, index_dir, raw_path, paper_count = _build_demo_artifacts(tmp_path, tiny_embedding_model)
+    monkeypatch.setattr(vector_store, "EmbeddingModel", tiny_embedding_model)
     monkeypatch.setattr(vector_store, "_index_cache", None)
     monkeypatch.setattr(vector_store, "_model_cache", None)
 

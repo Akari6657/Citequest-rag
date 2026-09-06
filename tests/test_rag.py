@@ -67,20 +67,15 @@ class TestVerifyCitations:
 
 
 class TestBuildPrompts:
-    def test_returns_tuple(self):
-        system, user = build_prompts("[1] Test evidence", "测试问题")
+    def test_preserves_evidence_and_question(self):
+        evidence = "[1] GAN paper abstract\n[2] 中文证据"
+        question = "什么是 GAN？"
+        system, user = build_prompts(evidence, question)
         assert isinstance(system, str)
+        assert system
         assert isinstance(user, str)
-
-    def test_chinese_content(self):
-        system, user = build_prompts("[1] 证据", "问题？")
-        assert "证据" in user
-        assert "问题？" in user
-
-    def test_evidence_in_user(self):
-        _, user = build_prompts("[1] GAN paper abstract here", "什么是GAN？")
-        assert "[1] GAN paper abstract here" in user
-        assert "什么是GAN？" in user
+        assert evidence in user
+        assert question in user
 
 
 # ---------------------------------------------------------------------------
