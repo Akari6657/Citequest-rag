@@ -269,3 +269,22 @@ def test_runtime_budget_is_applied_to_both_answer_paths(monkeypatch, evidence_db
     )
     assert response["citations"] == []
     assert response["answer"] == "未找到相关证据，无法回答该问题。"
+
+
+def test_both_answer_paths_default_to_five_candidates(monkeypatch, evidence_db):
+    db_path, results = evidence_db
+    with sqlite3.connect(db_path) as conn:
+        for number in (5, 6):
+            conn.execute(
+                "INSERT INTO chunks(chunk_id, paper_id, chunk_text) VALUES (?, 'P3', ?)",
+                (f"C{number}", f"Complete evidence {number}."),
+            )
+            results.append(results[-1].model_copy(update={"chunk_id": f"C{number}"}))
+    generate = install_mock_llm(monkeypatch, "Grounded answer [5].")
+    response = assert_same_response(
+        dict(question="How does grounding work?", pre_retrieved=results, db_path=db_path),
+        ["organizing", "generating", "verifying"],
+    )
+    assert [c["chunk_id"] for c in response["citations"]] == [f"C{i}" for i in range(1, 6)]
+    assert response["citation_valid"] is True
+    assert "Complete evidence 6." not in generate.call_args.kwargs["user"]

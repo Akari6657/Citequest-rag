@@ -316,6 +316,9 @@ def test_search_overview_receives_final_ranked_candidates(monkeypatch, tmp_path)
             abstract="Evidence",
         )
     ]
+    ranked.extend(ranked[0].model_copy(update={
+        "paper_id": f"P{number // 2 + 1}", "chunk_id": f"chunk{number}",
+    }) for number in range(1, 6))
     observed = {}
     monkeypatch.setattr(routes_search, "get_db_path", lambda: tmp_path / "metadata.sqlite")
     monkeypatch.setattr(routes_search, "get_faiss_dir", lambda: tmp_path)
@@ -341,10 +344,13 @@ def test_search_overview_receives_final_ranked_candidates(monkeypatch, tmp_path)
         SearchRequest(
             query="如何评估 RAG",
             mode="lexical",
-            top_k=3,
+            top_k=10,
             include_overview=True,
         )
     )
 
     assert observed["pre_retrieved"][0].chunk_id == "expanded_hit"
+    assert observed["top_k"] == 5
+    assert observed["pre_retrieved"] == ranked[:5]
+    assert len(response.results) == 3
     assert response.results[0].chunk_id == "expanded_hit"

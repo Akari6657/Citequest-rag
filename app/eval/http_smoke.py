@@ -15,6 +15,7 @@ from typing import Any
 
 import httpx
 
+from app.core.config import DEFAULT_RAG_TOP_K
 from app.eval.runtime_info import collect_accelerator_info
 
 
@@ -333,7 +334,7 @@ def run_http_smoke(
                 hybrid_results = results
 
         if hybrid_results:
-            rag_top_k = min(top_k, len(hybrid_results), 8)
+            rag_top_k = min(top_k, len(hybrid_results), DEFAULT_RAG_TOP_K)
             response, wall_ms = request(
                 "POST",
                 "/ask",

@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 from unittest.mock import patch
 
+from app.core.config import DEFAULT_RAG_TOP_K
 from app.core.schemas import SearchResult
 from app.eval.runtime_info import collect_accelerator_info
 from app.retrieval.embeddings import DEFAULT_MODEL_NAME
@@ -700,7 +701,7 @@ def run_api_smoke(
                 hybrid_results = body["results"]
 
         if hybrid_results:
-            rag_top_k = min(top_k, len(hybrid_results), 8)
+            rag_top_k = min(top_k, len(hybrid_results), DEFAULT_RAG_TOP_K)
             mock = MockLLMProvider(
                 "The retrieved evidence supports this demo answer [1]."
             )

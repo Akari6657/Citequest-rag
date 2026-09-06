@@ -34,6 +34,7 @@ def test_ask_uses_environment_alpha_when_omitted(monkeypatch):
     response = routes_ask.ask_question(request)
 
     assert request.alpha is None
+    assert request.top_k == observed["top_k"] == 5
     assert observed["alpha"] == 0.65
     assert response.effective_alpha == 0.65
 
@@ -108,3 +109,4 @@ def test_streaming_ask_uses_resolved_alpha(monkeypatch):
 
     assert response.media_type == "text/event-stream"
     assert observed["alpha"] == 0.65
+    assert observed["top_k"] == 5

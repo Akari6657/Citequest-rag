@@ -13,6 +13,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.core.config import DEFAULT_RAG_TOP_K
+
 
 # ---------------------------------------------------------------------------
 # Data models (ingestion output)
@@ -141,7 +143,7 @@ class AskRequest(BaseModel):
     """Incoming RAG question (POST /ask)."""
 
     question: str = Field(..., min_length=1, description="Natural-language question")
-    top_k: int = Field(default=8, ge=1, le=20, description="Number of evidence chunks to retrieve")
+    top_k: int = Field(default=DEFAULT_RAG_TOP_K, ge=1, le=20, description="Maximum candidate evidence chunks before budget packing")
     retrieval_mode: Literal["lexical", "vector", "hybrid"] = Field(
         default="hybrid",
         description="Search mode for evidence retrieval",

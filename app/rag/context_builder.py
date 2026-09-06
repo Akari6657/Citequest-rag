@@ -24,9 +24,8 @@ logger = logging.getLogger(__name__)
 
 # Portable estimate for predominantly English papers: four ASCII characters
 # per token; conservatively allow two tokens per non-ASCII character. These
-# integer quarter-token units also let us budget separators and truncation
-# markers exactly under the same estimate, without downloading a tokenizer.
-_TRUNCATION_MARKER = " …（内容已截断）"
+# integer quarter-token units also let us budget headers and separators
+# consistently, without downloading a tokenizer.
 
 
 def _token_units(text: str) -> int:
@@ -36,29 +35,6 @@ def _token_units(text: str) -> int:
 def _estimate_tokens(text: str) -> int:
     """Estimate evidence tokens; this is not the provider's tokenizer count."""
     return (_token_units(text) + 3) // 4
-
-
-def _truncate_text(text: str, max_units: int) -> str:
-    """Keep a Unicode-safe prefix within the remaining estimate."""
-    used = 0
-    end = 0
-    for char in text:
-        units = 1 if char.isascii() else 8
-        if used + units > max_units:
-            break
-        used += units
-        end += 1
-    prefix = text[:end].rstrip()
-    # Avoid ending halfway through an English word when a boundary exists.
-    if (
-        end < len(text) and prefix
-        and prefix[-1].isascii() and prefix[-1].isalnum()
-        and text[end].isascii() and text[end].isalnum()
-    ):
-        boundary = prefix.rfind(" ")
-        if boundary > 0:
-            prefix = prefix[:boundary].rstrip()
-    return prefix
 
 
 def build_evidence(
@@ -78,9 +54,9 @@ def build_evidence(
         max_tokens: Estimated evidence-token budget. None reads
                     CITEQUEST_RAG_CONTEXT_TOKENS (default 8000).
 
-    Complete chunks are included in retrieval order. The last fitting chunk
-    may be shortened, with an explicit marker; even the first chunk cannot
-    exceed the estimate. Prompts and generated output need separate headroom.
+    Complete chunks are included in retrieval order. Stop before the first
+    valid chunk that would exceed the budget; do not truncate it or substitute
+    a lower-ranked chunk. Prompts and output need separate headroom.
 
     Returns:
         (evidence_text, citation_map) where:
@@ -113,7 +89,7 @@ def build_evidence(
     evidence_parts: list[str] = []
     citation_map: list[dict[str, Any]] = []
     used_units = 0
-    truncated_chunks = 0
+    budget_exhausted = False
     next_id = 1
     seen_chunks: set[str] = set()
 
@@ -152,19 +128,13 @@ def build_evidence(
         header = "\n".join(parts) + "\n内容: "
         separator = "\n\n" if evidence_parts else ""
         entry = header + evidence_text
-        remaining = budget_units - used_units
-        shortened = _token_units(separator + entry) > remaining
-        if shortened:
-            overhead = _token_units(separator + header + _TRUNCATION_MARKER)
-            prefix = _truncate_text(evidence_text, remaining - overhead)
-            if not prefix:
-                # Another candidate with a shorter title may still fit.
-                continue
-            entry = header + prefix + _TRUNCATION_MARKER
-            truncated_chunks += 1
+        entry_units = _token_units(separator + entry)
+        if used_units + entry_units > budget_units:
+            budget_exhausted = True
+            break
 
         evidence_parts.append(entry)
-        used_units += _token_units(separator + entry)
+        used_units += entry_units
         seen_chunks.add(r.chunk_id)
 
         citation_map.append({
@@ -176,16 +146,14 @@ def build_evidence(
         })
 
         next_id += 1
-        if shortened:
-            break
 
     evidence_text = "\n\n".join(evidence_parts)
 
     logger.info(
-        "build_evidence: candidates=%d used=%d estimated_tokens=%d budget=%d truncated=%d",
+        "build_evidence: candidates=%d used=%d estimated_tokens=%d budget=%d budget_exhausted=%s",
         len(results), len(evidence_parts),
         _estimate_tokens(evidence_text),
-        budget, truncated_chunks,
+        budget, budget_exhausted,
     )
 
     return evidence_text, citation_map

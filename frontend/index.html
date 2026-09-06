@@ -314,8 +314,8 @@
             question: q,
             retrieval_mode: mode,
             alpha: alpha,
-            top_k: 8,
-            pre_retrieved: this.results.slice(0, 8),  // reuse Phase 1 results
+            top_k: 5,
+            pre_retrieved: this.results.slice(0, 5),  // reuse the first five search results
           },
           onEvent: (type, data) => {
             if (type === "status") {

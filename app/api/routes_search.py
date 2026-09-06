@@ -13,7 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from app.api.retrieval_config import resolve_request_hybrid_alpha
-from app.core.config import get_db_path, get_faiss_dir
+from app.core.config import DEFAULT_RAG_TOP_K, get_db_path, get_faiss_dir
 from app.core.schemas import SearchRequest, SearchResponse, SearchResult
 from app.rag.router import route_query
 from app.rag.answer import answer_question
@@ -140,7 +140,7 @@ def search_papers(request: SearchRequest) -> SearchResponse:
     ai_overview = None
     if request.include_overview and router_result.should_rag:
         logger.info("AI Overview triggered: %s", router_result.reason)
-        n_chunks = min(request.top_k, 8)
+        n_chunks = min(request.top_k, DEFAULT_RAG_TOP_K)
         # Use pre-dedup results so LLM gets multiple chunks from the same paper
         ai_overview = answer_question(
             question=request.query,

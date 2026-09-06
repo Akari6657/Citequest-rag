@@ -95,15 +95,25 @@ def test_complete_chunks_keep_retrieval_order_when_they_fit(evidence_db):
 def test_even_the_first_chunk_must_fit_the_estimated_budget(evidence_db, content):
     with sqlite3.connect(evidence_db) as conn:
         conn.execute("UPDATE chunks SET chunk_text=? WHERE chunk_id='C1'", (content,))
-    text, citations = build_evidence([result()], db_path=evidence_db, max_tokens=96)
-    assert len(citations) == 1
-    assert "内容已截断" in text
-    assert "\ufffd" not in text
-    assert 0 < _estimate_tokens(text) <= 96
+    # A later short chunk must not replace an oversized first candidate.
+    assert build_evidence(
+        [result(), result("C2", "P2")], db_path=evidence_db, max_tokens=96,
+    ) == ("", [])
 
 
-def test_no_forced_first_chunk_when_even_the_header_cannot_fit(evidence_db):
-    assert build_evidence([result()], db_path=evidence_db, max_tokens=1) == ("", [])
+def test_stop_before_overflow_even_when_a_later_shorter_chunk_would_fit(evidence_db):
+    first = result()
+    last = result("C2", "P2")
+    with sqlite3.connect(evidence_db) as conn:
+        conn.execute("UPDATE chunks SET chunk_text=? WHERE chunk_id='C1-body'", ("Long body. " * 1000,))
+    fitting_text, _ = build_evidence([first, last], db_path=evidence_db)
+    first_text, _ = build_evidence([first], db_path=evidence_db)
+    text, citations = build_evidence(
+        [first, result("C1-body"), last], db_path=evidence_db,
+        max_tokens=_estimate_tokens(fitting_text),
+    )
+    assert text == first_text
+    assert [c["chunk_id"] for c in citations] == ["C1"]
 
 
 def test_citations_only_describe_included_evidence(evidence_db):

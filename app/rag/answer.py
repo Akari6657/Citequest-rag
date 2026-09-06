@@ -22,6 +22,7 @@ from typing import Any
 
 from app.core.config import (
     DEFAULT_HYBRID_ALPHA,
+    DEFAULT_RAG_TOP_K,
     get_db_path,
     get_faiss_dir,
     validate_hybrid_alpha,
@@ -178,7 +179,7 @@ def _build_response(
 def answer_question(
     question: str,
     pre_retrieved: list[dict | SearchResult] | None = None,
-    top_k: int = 8,
+    top_k: int = DEFAULT_RAG_TOP_K,
     retrieval_mode: str = "hybrid",
     alpha: float | None = DEFAULT_HYBRID_ALPHA,
     db_path: str | Path | None = None,
@@ -261,7 +262,7 @@ _PHASE_MESSAGES = {
 async def answer_question_stream(
     question: str,
     pre_retrieved: list[dict | SearchResult] | None = None,
-    top_k: int = 8,
+    top_k: int = DEFAULT_RAG_TOP_K,
     retrieval_mode: str = "hybrid",
     alpha: float | None = DEFAULT_HYBRID_ALPHA,
     db_path: str | Path | None = None,
