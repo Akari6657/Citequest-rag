@@ -58,8 +58,8 @@ Hybrid 的 HitRate@10 比最佳单路检索提高 **4 个百分点**。融合权
 ### 1. 安装依赖
 
 ```bash
-git clone https://github.com/Akari6657/Ragsearch.git
-cd Ragsearch
+git clone https://github.com/Akari6657/Citequest-rag.git
+cd Citequest-rag
 
 python3 -m venv .venv
 source .venv/bin/activate
