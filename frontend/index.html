@@ -135,17 +135,17 @@
       </template>
 
       <!-- Citation list (collapsible) -->
-      <div class="citation-section" x-show="overview?.citations?.length">
+      <div class="citation-section" x-show="citedSources.length">
         <button class="citation-toggle"
                 @click="showCitations = !showCitations"
                 :aria-expanded="showCitations">
           <span class="citation-arrow" :class="{ 'is-open': showCitations }">▸</span>
           📚 引用来源
-          <span class="citation-count" x-text="'(' + (overview?.citations?.length || 0) + ')'"></span>
+          <span class="citation-count" x-text="'(' + citedSources.length + ')'"></span>
         </button>
 
         <ol class="citation-list" x-show="showCitations" x-transition>
-          <template x-for="c in overview?.citations || []" :key="c.citation_id">
+          <template x-for="c in citedSources" :key="c.citation_id">
             <li class="citation-item">
               <span class="citation-id" x-text="'[' + c.citation_id + ']'"></span>
               <span class="citation-title" x-text="c.title"></span>
@@ -231,6 +231,14 @@
 
       // Citation toggle
       showCitations: true,
+
+      get citedSources() {
+        const citedIds = new Set(
+          [...(this.overview?.answer || "").matchAll(/\[(\d+)\]/g)]
+            .map(match => Number(match[1]))
+        );
+        return (this.overview?.citations || []).filter(c => citedIds.has(c.citation_id));
+      },
 
       // Async AI Overview loading (SSE-driven)
       overviewLoading: false,
